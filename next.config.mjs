@@ -1,11 +1,10 @@
-// =============================================================================
-//  next.config.mjs  —  performance + security baked in at the framework level
-// =============================================================================
 const isProd = process.env.NODE_ENV === 'production';
 
-// CSP must be relaxed in dev: Next's HMR/runtime uses eval + inline scripts.
-// In production we ship a strict policy. (ARCHITECTURE.md §3 "HTTP hardening".)
-const scriptSrc = isProd ? "script-src 'self'" : "script-src 'self' 'unsafe-eval' 'unsafe-inline'";
+// Next.js injects inline scripts for hydration even in production.
+// 'unsafe-inline' is needed; nonce-based CSP is the next hardening step.
+const scriptSrc = isProd
+  ? "script-src 'self' 'unsafe-inline'"
+  : "script-src 'self' 'unsafe-eval' 'unsafe-inline'";
 
 const csp = [
   "default-src 'self'",
@@ -13,7 +12,6 @@ const csp = [
   scriptSrc,
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
-  // Allow ONLY the bKash/Nagad gateway iframe; lock everything else down.
   "frame-src https://*.sslcommerz.com https://*.amarpay.com",
   "connect-src 'self'",
   "base-uri 'self'",
@@ -24,20 +22,15 @@ const csp = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  poweredByHeader: false,          // hide "X-Powered-By" (minor info-leak)
-  compress: true,                  // gzip; put Brotli at the CDN/edge in front
-
+  poweredByHeader: false,
+  compress: true,
   images: {
-    // Serve the smallest possible bytes: AVIF first, WebP fallback.
     formats: ['image/avif', 'image/webp'],
-    // Only generate the widths a phone screen actually needs — no 4K variants.
     deviceSizes: [320, 420, 640, 768, 1080],
     imageSizes: [64, 96, 128, 256],
-    minimumCacheTTL: 60 * 60 * 24 * 30, // cache optimized images 30 days
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [{ protocol: 'https', hostname: 'cdn.palashtelecom.com' }],
   },
-
-  // Security headers (the "Helmet" equivalent for Next.js).
   async headers() {
     return [{
       source: '/:path*',
